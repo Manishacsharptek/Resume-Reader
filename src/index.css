@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force Vite HMR to pick up the CSS file and set a fallback dark theme */
+body {
+    background-color: #020617;
+    color: #e2e8f0;
+}

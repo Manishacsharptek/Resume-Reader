@@ -10,14 +10,31 @@ const SignUp = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Dummy submit logic for now - route directly to onboarding step
-    setTimeout(() => {
+    setError('');
+    try {
+      const response = await fetch('http://localhost:3090/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || 'Sign up failed. Please try again.');
+        setLoading(false);
+        return;
+      }
       setLoading(false);
       navigate('/onboarding');
-    }, 1500);
+    } catch (err) {
+      setError('Cannot connect to server. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,6 +92,9 @@ const SignUp = () => {
                />
             </div>
             
+            {error && (
+              <p className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
+            )}
             <button 
               type="submit" 
               disabled={loading}

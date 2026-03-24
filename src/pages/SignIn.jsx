@@ -10,14 +10,31 @@ const SignIn = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Dummy login logic for now
-    setTimeout(() => {
+    setError('');
+    try {
+      const response = await fetch('http://localhost:3090/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || 'Sign in failed. Please try again.');
+        setLoading(false);
+        return;
+      }
       setLoading(false);
-      navigate('/resume');
-    }, 1500);
+      navigate('/upload');
+    } catch (err) {
+      setError('Cannot connect to server. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,6 +84,9 @@ const SignIn = () => {
                />
             </div>
             
+            {error && (
+              <p className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
+            )}
             <button 
               type="submit" 
               disabled={loading}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -17,22 +18,11 @@ const SignUp = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:3090/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.message || 'Sign up failed. Please try again.');
-        setLoading(false);
-        return;
-      }
+      const response = await api.post('/api/auth/signup', formData);
       setLoading(false);
       navigate('/onboarding');
     } catch (err) {
-      setError('Cannot connect to server. Please try again.');
+      setError(err.response?.data?.message || 'Sign up failed. Please try again.');
       setLoading(false);
     }
   };

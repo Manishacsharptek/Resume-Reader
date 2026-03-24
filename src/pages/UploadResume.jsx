@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
+import api from '../services/api';
 
 const UploadResume = () => {
   const location = useLocation();
@@ -22,12 +23,9 @@ const UploadResume = () => {
       formData.append('level', careerLevel);
 
       try {
-        const response = await fetch('http://localhost:3090/api/resume/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await api.post('/api/resume/upload', formData);
         
-        const data = await response.json();
+        const data = response.data;
         setIsUploading(false);
 
         // Always navigate to score page — even if parsing failed, show what we have

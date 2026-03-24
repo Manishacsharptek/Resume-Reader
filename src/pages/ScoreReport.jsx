@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import api from '../services/api';
 
 const ScoreReport = () => {
   const location = useLocation();
@@ -49,12 +50,8 @@ const ScoreReport = () => {
     }
     const fetchAi = async () => {
       try {
-        const res = await fetch('http://localhost:3090/api/resume/ai-insights', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rawText: resumeText }),
-        });
-        const data = await res.json();
+        const res = await api.post('/api/resume/ai-insights', { rawText: resumeText });
+        const data = res.data;
         setAiData(data.success && data.data ? data.data : getFallbackAiData());
       } catch {
         setAiData(getFallbackAiData());

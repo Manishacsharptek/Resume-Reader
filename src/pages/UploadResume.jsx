@@ -28,23 +28,29 @@ const UploadResume = () => {
         });
         
         const data = await response.json();
-        
         setIsUploading(false);
-        if (data.success) {
-          navigate('/score', { 
-            state: { 
-              uploadedFile: file.name, 
-              level: careerLevel, 
-              scoreData: data.scoring 
-            } 
-          });
-        } else {
-          alert('Error parsing resume: ' + data.message);
-        }
+
+        // Always navigate to score page — even if parsing failed, show what we have
+        navigate('/score', { 
+          state: { 
+            uploadedFile: file.name, 
+            level: careerLevel, 
+            scoreData: data.data || {},
+            resumeText: data.data?.rawText || ""
+          } 
+        });
       } catch (error) {
+        // Network / server down — still navigate to score with empty data + AI fallback tips
         setIsUploading(false);
         console.error('Upload Error:', error);
-        alert('Server error uploading resume. Please make sure the backend is running.');
+        navigate('/score', {
+          state: {
+            uploadedFile: file.name,
+            level: careerLevel,
+            scoreData: {},
+            resumeText: ""
+          }
+        });
       }
     }
   };

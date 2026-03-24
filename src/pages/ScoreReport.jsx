@@ -1,43 +1,87 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const ScoreReport = () => {
   const location = useLocation();
-  const uploadedFile = location.state?.uploadedFile || "Resume.pdf";
-  
-  // Dynamic Score Data passed from /upload
-  const scoreData = location.state?.scoreData || {
-    score: 12,
-    fixes: [
+  const resumeText = location.state?.resumeText || "";
+
+  // AI Insights state
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiData, setAiData] = useState(null);
+
+  const getFallbackAiData = () => ({
+    aiSuggestions: [
       {
-         title: "Resume likely not read correctly",
-         description: "We couldn't read all your resume's sections or bullet points. Change your resume template or use one of these alternatives so it's more readable by resume screeners.",
-         category: "STYLE",
-         icon: "style"
+        title: "Add Quantified Achievements",
+        suggestion: "Replace vague duties with numbers. E.g. 'Managed a team' → 'Led a team of 8, delivering a 30% improvement in sprint velocity'. Recruiters look for measurable proof of impact.",
+        impact: "High"
       },
       {
-         title: "Quantify impact",
-         description: "Add more numbers to quantify your accomplishments",
-         category: "IMPACT",
-         icon: "impact"
+        title: "Missing ATS Keywords",
+        suggestion: "Your resume likely lacks keywords from job descriptions. Add terms like 'cross-functional collaboration', 'stakeholder management', and role-specific tech skills to pass automated screening.",
+        impact: "High"
       },
       {
-         title: "Change your resume layout",
-         description: "Your resume should use bullet points, not paragraphs",
-         category: "BREVITY",
-         icon: "brevity"
-      }
+        title: "Rewrite Your Career Summary",
+        suggestion: "A powerful summary is 2-3 lines: who you are, your top achievement, and what you bring to the role. Start with a strong adjective + years of experience + your biggest win.",
+        impact: "High"
+      },
+      {
+        title: "Upgrade Action Verbs",
+        suggestion: "Weak openers like 'Responsible for' and 'Helped with' reduce impact. Replace with: Architected, Spearheaded, Engineered, Delivered, Optimized, or Deployed.",
+        impact: "Medium"
+      },
+      {
+        title: "Tighten Your Formatting",
+        suggestion: "Keep resume to 1 page (under 5 years XP) or 2 pages max. Use consistent bullet point style, standard fonts (Calibri/Arial 10-11pt), and leave adequate white space.",
+        impact: "Medium"
+      },
     ],
-    goods: [
-       { title: "Page density", description: "Your page layout looks right." },
-       { title: "Dates are in the right format", description: "Your dates are in the right format." },
-       { title: "Spelling", description: "No clear spelling errors found on your resume." }
-    ]
+    aiMeta: { isLive: false, wordCount: 0, count: 5 }
+  });
+
+  useEffect(() => {
+    if (!resumeText) {
+      // No resume text — still show professional fallback tips
+      setAiData(getFallbackAiData());
+      setAiLoading(false);
+      return;
+    }
+    const fetchAi = async () => {
+      try {
+        const res = await fetch('http://localhost:3090/api/resume/ai-insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText: resumeText }),
+        });
+        const data = await res.json();
+        setAiData(data.success && data.data ? data.data : getFallbackAiData());
+      } catch {
+        setAiData(getFallbackAiData());
+      } finally {
+        setAiLoading(false);
+      }
+    };
+    fetchAi();
+  }, [resumeText]);
+
+  const scoreData = location.state?.scoreData || {
+    overallScore: 0,
+    profile: { name: "User", email: "Not found", phone: "Not found", skills: [] },
+    scores: { impact: 0, brevity: 0, style: 0, skills: 0 },
+    fixes: [], goods: [], recommendations: []
   };
 
+  const name = scoreData.profile?.name || "User";
+  const score = scoreData.overallScore || 0;
+
+  // Score colour
+  const scoreColor = score >= 70 ? '#10b981' : score >= 45 ? '#f59e0b' : '#ef4444';
+
   return (
-    <div className="min-h-screen bg-[#f4f6fc] flex flex-col font-sans selection:bg-indigo-500 selection:text-white md:overflow-hidden overflow-auto">
-      {/* Top Navbar */}
+    <div className="min-h-screen bg-[#f0f2f9] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+      {/* ── Navbar ── */}
       <nav className="w-full h-14 bg-[#18113f] text-white flex items-center justify-between px-4 sm:px-6 z-50 shadow-md shrink-0">
         <div className="flex items-center gap-4">
           <Link to="/" className="text-xs sm:text-sm font-black tracking-wider sm:tracking-[0.2em] uppercase hover:text-indigo-300 transition-colors whitespace-nowrap">
@@ -46,264 +90,346 @@ const ScoreReport = () => {
           <span className="text-slate-500 font-light">|</span>
           <span className="text-[0.8rem] font-bold tracking-widest text-slate-300">SCORE MY RESUME</span>
         </div>
-        <div className="flex items-center gap-6 text-[0.85rem] font-medium hidden sm:flex">
-          <div className="flex items-center gap-1 cursor-pointer hover:text-slate-300 transition-colors">
-            Career Coaches
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-          </div>
-          <div className="flex items-center gap-4 cursor-pointer hover:text-slate-300 transition-colors mr-2">
-            More
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 -ml-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-          </div>
-          <button className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold h-14 px-6 flex items-center justify-center gap-2 transition-colors shadow-inner">
+        <div className="hidden sm:flex items-center gap-6 text-[0.85rem] font-medium">
+          <Link to="/upload" className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold h-14 px-6 flex items-center justify-center gap-2 transition-colors">
             Re-score Resume
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-[1rem] w-[1rem]" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
-          </button>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
+          </Link>
         </div>
       </nav>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex flex-col md:flex-row md:overflow-hidden overflow-visible custom-scrollbar">
-        
-        {/* Center Main Column */}
-        <div className="w-full md:flex-[1.5] lg:flex-[1.8] xl:flex-[2] bg-[#f4f6fc] z-10 md:overflow-y-auto overflow-hidden custom-scrollbar h-auto md:h-[calc(100vh-56px)] order-1 relative">
-           <div className="max-w-4xl mx-auto px-5 sm:px-12 lg:px-20 pt-10 pb-24">
-              <div className="flex gap-3 mb-10">
-                <button className="w-9 h-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow-md transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-[1.1rem] w-[1.1rem]" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                </button>
-                <button className="w-9 h-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow-md transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-[1.1rem] w-[1.1rem]" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                </button>
+      {/* ── Two-Column Main Layout ── */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        {/* ══════════════════════════════════
+            LEFT COLUMN — Score + Fixes + Goods
+            ══════════════════════════════════ */}
+        <div className="w-full lg:w-[55%] bg-[#f0f2f9] overflow-y-auto custom-scrollbar h-auto lg:h-[calc(100vh-56px)]">
+          <div className="max-w-2xl mx-auto px-5 sm:px-10 pt-10 pb-24">
+
+            {/* Greeting */}
+            <h2 className="text-2xl sm:text-[1.8rem] font-bold text-[#1e1b4b] mb-1 tracking-wide">
+              Good morning, {name.split(' ')[0]}.
+            </h2>
+            <p className="text-[1.05rem] text-slate-500 mb-10 font-light">Welcome to your resume review.</p>
+
+            {/* ── Score Card ── */}
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.05)] border border-slate-100 p-8 sm:p-10 mb-10">
+              {/* Big score circle + label */}
+              <div className="flex items-center gap-6 mb-8">
+                <div className="relative w-24 h-24 shrink-0">
+                  <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle
+                      cx="18" cy="18" r="15.9" fill="none"
+                      stroke={scoreColor} strokeWidth="3.5"
+                      strokeDasharray={`${score} ${100 - score}`}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dasharray 1.2s ease-out' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-black" style={{ color: scoreColor }}>{score}</span>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#1e1b4b] mb-1">
+                    Your resume scored <span style={{ color: scoreColor }}>{score}</span> out of 100
+                  </h3>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">
+                    {score >= 70
+                      ? "Great start! A few improvements can push you to the top."
+                      : "With a few changes you can increase your score by 40+ points."}
+                  </p>
+                </div>
               </div>
 
-              <h2 className="text-2xl sm:text-[1.8rem] font-bold text-[#1e1b4b] mb-4 tracking-wide">Good morning, Manisha.</h2>
-              <p className="text-[1.1rem] text-slate-500 mb-12 font-light">Welcome to your resume review.</p>
-
-              {/* Score Card */}
-              <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-100/50 p-8 sm:p-12 mb-20">
-                 <h3 className="text-xl sm:text-[1.2rem] font-bold text-[#334155] mb-6">Your resume scored <span className="text-red-500 font-black">{scoreData.score}</span> out of 100.</h3>
-                 <p className="text-slate-500 leading-relaxed font-light text-[1rem] sm:text-[1.05rem] mb-14">
-                   It seems like your resume scored poorly on key checks that hiring managers and resume screening software scan your resume for. But don't worry! With a few simple changes to your resume, you can increase your score by 40+ points. We'll go through them in this report.
-                 </p>
-
-                 {/* Progress Slider */}
-                 <div className="relative mb-8 px-2 max-w-2xl">
-                    <div className="flex justify-between text-[0.7rem] font-extrabold tracking-widest text-[#334155] mb-4 absolute -top-9 w-full left-0">
-                       <span className="tracking-[0.1em] uppercase">YOUR RESUME</span>
-                       <div className="flex flex-col items-center absolute right-[12%]">
-                          <span className="tracking-[0.1em] text-slate-500">TOP</span>
-                          <span className="tracking-[0.1em] text-slate-500">RESUMES</span>
-                       </div>
-                    </div>
-                    
-                    <div className="h-4 w-full bg-gradient-to-r from-red-600 via-orange-400 to-[#65a30d] rounded-sm relative mt-12 overflow-visible">
-                       {/* The Triangle Indicator */}
-                       <div className="absolute top-[0px] transform -translate-x-1/2 -translate-y-full flex flex-col items-center transition-all duration-1000 ease-out z-10" style={{ left: `${Math.max(scoreData.score, 2)}%` }}>
-                          <div className="w-0 h-0 border-l-[7px] border-r-[7px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#3b21c4]"></div>
-                       </div>
-                       <div className="absolute top-[1.5rem] left-[1px] transform -translate-x-1/2 font-bold text-lg text-slate-700">
-                          0
-                       </div>
-
-                       {/* Dotted threshold indicator */}
-                       <div className="absolute top-[-15px] right-[12%] w-[2px] h-[50px] border-l-[3px] border-dotted border-[#4f20e3]"></div>
-                    </div>
-
-                    <div className="absolute top-[1.5rem] right-[-1rem] font-bold text-lg text-slate-700">
-                       100
-                    </div>
-                 </div>
-
-                 {/* Info Box */}
-                 <div className="bg-[#fffdf2]/90 border-l-[6px] border-[#eab308]/60 p-6 sm:p-8 rounded-r-xl mt-24 relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 absolute top-8 sm:top-9 left-6" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4z" /></svg>
-                    <p className="text-[#64748b] text-[1.05rem] leading-[1.8] pl-8 font-light">
-                      Your score is benchmarked against 1m+ resumes at your career level, and is based on 20+ key recruiter checks. The higher your resume score, the stronger your resume is and the more interviews you are likely to get.
-                    </p>
-                 </div>
+              {/* Gradient bar */}
+              <div className="relative mb-4 mt-6">
+                <div className="flex justify-between text-[0.65rem] font-bold tracking-widest text-slate-400 mb-2 uppercase">
+                  <span>Your Resume</span>
+                  <span className="mr-[12%]">Top Resumes</span>
+                </div>
+                <div className="h-3 w-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500 rounded-full relative overflow-visible">
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-indigo-600 rounded-full shadow-md transition-all duration-1000"
+                    style={{ left: `calc(${Math.max(score, 2)}% - 8px)` }}
+                  />
+                  <div className="absolute top-[-18px] right-[12%] w-[2px] h-[30px] border-l-2 border-dotted border-indigo-400" />
+                </div>
+                <div className="flex justify-between text-xs font-bold text-slate-500 mt-1">
+                  <span>0</span><span>100</span>
+                </div>
               </div>
 
-              {/* Section: Steps to increase score */}
-              <div className="mb-20">
-                 <h2 className="text-2xl font-bold text-[#1e1b4b] mb-4 tracking-wide">Steps to increase your score</h2>
-                 <p className="text-[1.1rem] text-slate-500 mb-8 font-light leading-relaxed">Here are some recruiter checks that are bringing your score down. Click into each to learn where you went wrong and how to improve your score.</p>
-                 
-                 <div className="space-y-5">
-                    {scoreData.fixes && scoreData.fixes.length > 0 ? scoreData.fixes.map((fix, index) => (
-                    <div key={index} className="bg-white rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden flex cursor-pointer group hover:shadow-md transition-shadow">
-                       <div className="w-[4px] bg-[#fb5447] shrink-0"></div>
-                       <div className="p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
-                          <div className="flex-1">
-                             <h4 className="flex items-center gap-3 text-lg font-bold text-[#334155] mb-2">
-                               <div className="flex items-center justify-center w-5 h-5">
-                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-[1.1rem] w-[1.1rem] text-[#fb5447]" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                               </div>
-                               {fix.title}
-                             </h4>
-                             <p className="text-slate-500 font-light text-[0.95rem] leading-relaxed ml-8">{fix.description}</p>
-                          </div>
-                          <div className="flex items-center gap-6 shrink-0 justify-between md:justify-end w-full md:w-auto ml-8 md:ml-0 mt-4 md:mt-0">
-                             <div className="flex items-center gap-2 text-slate-500 font-bold text-[0.7rem] tracking-widest uppercase">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd" /></svg>
-                                {fix.category || 'IMPACT'}
-                             </div>
-                             <button className="bg-[#4f20e3] hover:bg-[#3d16b5] text-white font-bold py-2.5 px-5 rounded-md text-[0.85rem] tracking-wide transition-colors whitespace-nowrap">FIX ➔</button>
-                          </div>
-                       </div>
+              <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mt-6">
+                <p className="text-slate-500 text-sm leading-relaxed font-light">
+                  💡 Your score is benchmarked against <strong className="text-slate-700">1M+ resumes</strong> at your career level based on 20+ recruiter checks.
+                </p>
+              </div>
+            </div>
+
+            {/* ── Steps to increase score ── */}
+            <div className="mb-10">
+              <h2 className="text-xl font-bold text-[#1e1b4b] mb-2 tracking-wide">Steps to increase your score</h2>
+              <p className="text-slate-500 text-sm mb-6 font-light leading-relaxed">Here are the checks bringing your score down.</p>
+              <div className="space-y-4">
+                {scoreData.fixes && scoreData.fixes.length > 0 ? scoreData.fixes.map((fix, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden flex group hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="w-1 bg-red-500 shrink-0" />
+                    <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                      <div className="flex-1">
+                        <h4 className="flex items-center gap-2 text-base font-bold text-[#334155] mb-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                          {fix.title}
+                        </h4>
+                        <p className="text-slate-400 text-sm font-light leading-relaxed pl-6">{fix.description}</p>
+                      </div>
+                      <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-xs tracking-wide transition-colors whitespace-nowrap shrink-0">FIX ➔</button>
                     </div>
-                    )) : (
-                       <p className="text-slate-500 italic p-6">No major issues found! Great job.</p>
+                  </div>
+                )) : (
+                  <div className="bg-white rounded-xl border border-emerald-100 p-6 text-center">
+                    <p className="text-emerald-600 font-medium">🎉 No major issues found! Great job.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── What you did well ── */}
+            <div>
+              <h2 className="text-xl font-bold text-[#1e1b4b] mb-2 tracking-wide">What you did well</h2>
+              <p className="text-slate-500 text-sm mb-6 font-light">Here are key areas you performed well in.</p>
+              <div className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 space-y-5">
+                {scoreData.goods && scoreData.goods.length > 0 ? scoreData.goods.map((good, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-emerald-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    </div>
+                    <p className="text-slate-500 text-sm font-light"><span className="text-slate-700 font-semibold">{good.title}</span>: {good.description}</p>
+                  </div>
+                )) : (
+                  <p className="text-slate-400 italic text-sm">Expand your resume to show more verifiable positive attributes.</p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Uploaded Resume Preview ── */}
+            {(name !== "User" || resumeText) && (
+              <div className="mt-10">
+                <h2 className="text-xl font-bold text-[#1e1b4b] mb-2 tracking-wide">Your Resume</h2>
+                <p className="text-slate-500 text-sm mb-6 font-light">Parsed from your uploaded file.</p>
+
+                <div className="bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
+                  {/* Colour accent stripe */}
+                  <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                  <div className="px-8 sm:px-12 py-10 font-serif text-slate-800">
+
+                    {/* Name */}
+                    <h1 className="text-2xl sm:text-3xl font-bold text-center text-[#1e1b4b] mb-2 tracking-wide">{name}</h1>
+
+                    {/* Contact */}
+                    <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-slate-500 font-sans mb-5">
+                      {scoreData.profile?.email && scoreData.profile.email !== "Not found" && (
+                        <span className="flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                          {scoreData.profile.email}
+                        </span>
+                      )}
+                      {scoreData.profile?.phone && scoreData.profile.phone !== "Not found" && (
+                        <span className="flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+                          {scoreData.profile.phone}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="border-t border-dashed border-slate-200 mb-5" />
+
+                    {/* Skills */}
+                    {scoreData.profile?.skills && scoreData.profile.skills.length > 0 && (
+                      <div className="mb-5">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-widest text-slate-400 font-sans mb-2">Skills</p>
+                        <div className="flex flex-wrap gap-2">
+                          {scoreData.profile.skills.map((skill, idx) => (
+                            <span key={idx} className="bg-indigo-50 text-indigo-700 text-[0.7rem] font-semibold px-2.5 py-1 rounded-full font-sans border border-indigo-100">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="border-t border-dashed border-slate-200 mt-5 mb-5" />
+                      </div>
                     )}
-                 </div>
-                 
-                 <div className="mt-8 flex justify-center">
-                    <button className="bg-white text-[#4f20e3] font-bold text-[0.8rem] tracking-widest uppercase px-6 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] rounded transition-all flex items-center gap-2">
-                       SHOW MORE 
-                       <div className="bg-[#4f20e3] text-white text-[0.6rem] flex items-center justify-center w-[14px] h-[14px] rounded-sm ml-1 mb-[1px]">＋</div>
-                    </button>
-                 </div>
-              </div>
 
-              {/* Section: What you did well */}
-              <div className="pt-8 border-t border-slate-200">
-                 <h2 className="text-2xl font-bold text-[#1e1b4b] mb-4 tracking-wide">What you did well</h2>
-                 <p className="text-[1.1rem] text-slate-500 mb-8 font-light leading-relaxed">We ran 20+ checks on your resume. Here's a rundown of three key areas you did well in - well done.</p>
-                 
-                 <div className="bg-white rounded-md shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-slate-100 p-8 sm:p-10 space-y-6">
-                    {scoreData.goods && scoreData.goods.length > 0 ? scoreData.goods.map((good, index) => (
-                    <div key={index} className="flex items-start gap-4">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#10b981] mt-[-2px] shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                       <p className="text-slate-500 font-light text-[1.05rem]"><span className="text-slate-700 font-normal">{good.title}</span>: {good.description}</p>
-                    </div>
-                    )) : (
-                       <p className="text-slate-500 italic">Try expanding your resume to show more verifiable positive attributes.</p>
+                    {/* Raw resume text */}
+                    {resumeText ? (
+                      <div>
+                        <p className="text-[0.65rem] font-bold uppercase tracking-widest text-slate-400 font-sans mb-3">Resume Content</p>
+                        <pre className="text-[0.78rem] text-slate-600 font-sans leading-relaxed whitespace-pre-wrap break-words max-h-[480px] overflow-y-auto custom-scrollbar">
+                          {resumeText.trim()}
+                        </pre>
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 italic text-sm font-sans text-center py-3">
+                        Full resume text could not be extracted from this PDF.
+                      </p>
                     )}
-                 </div>
+                  </div>
+                </div>
               </div>
+            )}
 
-           </div>
+          </div>
         </div>
 
-        {/* Right Preview Column */}
-        <div className="w-full md:flex-1 bg-[#1e293b] flex flex-col h-[700px] md:h-[calc(100vh-56px)] border-t md:border-t-0 md:border-l border-slate-700 relative shadow-2xl z-0 order-3">
-          
-          {/* Top internal nav */}
-          <div className="w-full bg-[#182033] h-[3.25rem] flex items-center justify-between px-6 border-b border-slate-800/80 shrink-0 shadow-sm z-10">
-             <button className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                <span className="text-[0.65rem] font-bold tracking-widest text-emerald-50 whitespace-nowrap">GET PRO <span className="bg-amber-400 text-amber-900 px-1 py-0.5 ml-1 rounded-[3px]">75% OFF</span></span>
-             </button>
+        {/* ══════════════════════════════════
+            RIGHT COLUMN — Gemini AI Insights
+            ══════════════════════════════════ */}
+        <div className="w-full lg:w-[45%] bg-gradient-to-br from-[#1a1445] via-[#1e1b4b] to-[#26226b] overflow-y-auto custom-scrollbar h-auto lg:h-[calc(100vh-56px)] border-t lg:border-t-0 lg:border-l border-indigo-900/40">
 
-             <div className="flex h-full overflow-x-auto no-scrollbar">
-                <button className="flex items-center justify-center gap-2 px-5 h-full hover:bg-white/[0.03] border-l border-white/5 transition-colors group">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 group-hover:text-slate-200 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                   <span className="text-[0.65rem] font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">RESUME REWRITER</span>
-                </button>
-                <button className="flex items-center justify-center gap-2 px-5 h-full hover:bg-white/[0.03] border-l border-white/5 transition-colors group">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a1 1 0 00-.98.804l-.841 4.205C7.94 7.6 7.6 7.939 7.191 8.179l-4.205.84a1 1 0 000 1.962l4.205.84c.41.082.748.419.988 1.17l.841 4.205a1 1 0 001.96 0l.841-4.205c.24-.75.578-1.088.988-1.17l4.205-.84a1 1 0 000-1.962l-4.205-.84c-.41-.082-.748-.419-.988-1.17L10.98 2.804A1 1 0 0010 2z" clipRule="evenodd" /></svg>
-                   <span className="text-[0.65rem] font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">MAGIC WRITE</span>
-                </button>
-             </div>
-          </div>
+          {/* Ambient glow */}
+          <div className="absolute top-20 right-0 w-80 h-80 bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
 
-          {/* Actual Resume Visualizer */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0] p-10 flex justify-center items-start shadow-inner">
-             {/* The Resume Sheet */}
-             <div className="bg-white w-full max-w-[800px] min-h-[1056px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] px-6 sm:px-14 py-10 sm:py-16 font-serif text-slate-800 scale-[0.8] sm:scale-95 transform-origin-top transition-transform hover:scale-100 duration-500 border border-slate-200">
-                {/* Parse UI state wrapper */}
-                <div className="text-center w-full mb-10 text-slate-400 font-sans tracking-widest text-xs uppercase border-b border-dashed border-slate-300 pb-2">
-                   Parsed from: {uploadedFile}
+          <div className="relative z-10 px-6 sm:px-10 pt-10 pb-24">
+
+            {/* Panel header */}
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-wide">AI Expert Insights</h2>
+                <p className="text-indigo-400/70 text-[0.7rem] tracking-widest uppercase">Powered by Gemini</p>
+              </div>
+            </div>
+
+            {/* ── LOADING STATE ── */}
+            {aiLoading ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
+                {/* Spinner */}
+                <div className="relative w-20 h-20">
+                  <div className="absolute inset-0 rounded-full border-4 border-indigo-800" />
+                  <div className="absolute inset-0 rounded-full border-4 border-t-indigo-400 border-r-indigo-300 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-indigo-300 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-white font-bold text-lg">Gemini AI is analyzing your resume…</p>
+                  <p className="text-indigo-400/70 text-sm mt-1 font-light">Identifying improvements, missing keywords & ATS tips</p>
+                </div>
+                {/* Bouncing dots */}
+                <div className="flex gap-2 mt-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                {/* Skeleton shimmer cards */}
+                <div className="w-full mt-6 space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-white/5 rounded-xl p-5 animate-pulse">
+                      <div className="h-3 bg-indigo-700/50 rounded w-2/3 mb-3" />
+                      <div className="h-2 bg-indigo-800/50 rounded w-full mb-2" />
+                      <div className="h-2 bg-indigo-800/50 rounded w-4/5" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            ) : (
+              /* ── RESULTS STATE ── */
+              <div className="animate-ai-reveal">
+
+                {/* Live / Fallback badge */}
+                <div className="flex items-center justify-between mb-4">
+                  {aiData?.aiMeta?.isLive ? (
+                    <div className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 rounded-full">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                      </span>
+                      <span className="text-emerald-300 text-[0.65rem] font-bold tracking-widest uppercase">Live Gemini Analysis</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-full">
+                      <span className="text-indigo-300 text-lg">✨</span>
+                      <span className="text-indigo-300 text-[0.65rem] font-bold tracking-widest uppercase">AI Expert Tips</span>
+                    </div>
+                  )}
+                  {aiData?.aiMeta?.isLive && (
+                    <p className="text-indigo-400/60 text-[0.65rem]">
+                      ✓ {aiData.aiMeta.wordCount} words · {aiData.aiMeta.count} improvements
+                    </p>
+                  )}
                 </div>
 
-                <h1 className="text-center font-bold text-3xl mb-8 tracking-wide">Rahul Sharma</h1>
-                
-                <div className="text-center text-[0.8rem] mb-12 text-slate-600 leading-relaxed font-sans flex justify-center gap-4">
-                   <span>Phone: +91 9876543210</span> | 
-                   <span>Email: rahul.sharma@example.com</span> | 
-                   <span>Location: New Delhi, India</span>
+                <p className="text-indigo-200/70 text-sm mb-8 font-light leading-relaxed">
+                  {aiData?.aiMeta?.isLive
+                    ? `Gemini reviewed your full resume and found ${aiData.aiMeta.count || 'several'} ways to improve it:`
+                    : "Here are expert-recommended improvements to boost your resume's effectiveness:"}
+                </p>
+
+                {/* Suggestion cards */}
+                <div className="space-y-4">
+                  {aiData?.aiSuggestions && aiData.aiSuggestions.length > 0
+                    ? aiData.aiSuggestions.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white/[0.06] backdrop-blur-sm border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-all duration-300 group"
+                        style={{ animationDelay: `${idx * 80}ms` }}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-bold text-indigo-100 group-hover:text-white transition-colors text-[0.95rem] leading-snug pr-2">{item.title}</h4>
+                          <span className={`text-[0.55rem] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase shrink-0 ${
+                            item.impact === 'High'
+                              ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'
+                              : item.impact === 'Medium'
+                              ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30'
+                              : 'bg-slate-500/25 text-slate-300 border border-slate-500/30'
+                          }`}>
+                            {item.impact}
+                          </span>
+                        </div>
+                        <p className="text-indigo-200/65 text-sm font-light leading-relaxed">{item.suggestion}</p>
+                      </div>
+                    ))
+                    : <p className="text-indigo-300/50 italic text-sm">No insights available. Try re-uploading your resume.</p>
+                  }
                 </div>
 
-                <div className="mb-8">
-                   <h2 className="text-lg font-bold border-b-2 border-slate-300 pb-1 mb-3">Career Objective</h2>
-                   <p className="text-[0.9rem] leading-relaxed text-slate-700">
-                     Enthusiastic frontend developer with a passion for building responsive and user-friendly web applications. Eager to bring my creative problem solving and analytical thinking to a fast-paced team environment.
-                   </p>
-                </div>
 
-                <div className="mb-8">
-                   <h2 className="text-lg font-bold border-b-2 border-slate-300 pb-1 mb-3">Education</h2>
-                   <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-[1rem] font-bold text-slate-800">
-                        B.Tech in Computer Science
-                      </p>
-                      <p className="text-[0.8rem] text-slate-600 italic font-sans font-medium">May 2018 - May 2022</p>
-                   </div>
-                   <p className="text-[0.85rem] text-slate-600 italic">XYZ University</p>
-                </div>
 
-                <div className="mb-8">
-                   <h2 className="text-lg font-bold border-b-2 border-slate-300 pb-1 mb-3">Skills</h2>
-                   <p className="text-[0.9rem] leading-relaxed text-slate-700">
-                     <span className="font-bold">Languages:</span> JavaScript, TypeScript, Python, HTML/CSS<br/>
-                     <span className="font-bold">Libraries:</span> React.js, Tailwind CSS, Redux, Node.js<br/>
-                     <span className="font-bold">Tools:</span> Git, GitHub, VS Code, Webpack
-                   </p>
-                </div>
-
-                <div className="mb-8">
-                   <h2 className="text-lg font-bold border-b-2 border-slate-300 pb-1 mb-3">Projects</h2>
-                   <div className="mb-5">
-                     <p className="text-[1rem] font-bold text-slate-800 mb-1 flex items-center justify-between">Personal Portfolio Website <span className="text-[0.7rem] font-normal italic font-sans text-slate-500">Jan 2022 - Mar 2022</span></p>
-                     <p className="text-[0.85rem] text-slate-600 mb-2 italic">A highly responsive portfolio using HTML, CSS, React.js</p>
-                     <ul className="list-disc pl-5 text-[0.85rem] text-slate-700 space-y-1.5">
-                       <li>Integrated an optimized build process reducing load times by 20%.</li>
-                       <li>Implemented elegant scroll animations using Framer Motion.</li>
-                     </ul>
-                   </div>
-                   <div className="mb-4">
-                     <p className="text-[1rem] font-bold text-slate-800 mb-1 flex items-center justify-between">Task Management / Todo App <span className="text-[0.7rem] font-normal italic font-sans text-slate-500">Aug 2021 - Dec 2021</span></p>
-                     <p className="text-[0.85rem] text-slate-600 mb-2 italic">Full stack task management application built using MERN.</p>
-                     <ul className="list-disc pl-5 text-[0.85rem] text-slate-700 space-y-1.5">
-                       <li>Built a robust REST API allowing seamless CRUD operations.</li>
-                       <li>Employed custom React hooks to manage global layout states securely.</li>
-                     </ul>
-                   </div>
-                </div>
-
-                <div className="mb-8">
-                   <h2 className="text-lg font-bold border-b-2 border-slate-300 pb-1 mb-3">Experience</h2>
-                   <div className="mb-3">
-                      <p className="text-[1rem] font-bold text-slate-800 flex justify-between">
-                        Frontend Developer Intern <span className="text-[0.8rem] font-normal italic font-sans text-slate-500">Jun 2022 - Sep 2022</span>
-                      </p>
-                      <p className="text-[0.9rem] italic text-slate-600">ABC Tech</p>
-                      <ul className="list-disc pl-5 text-[0.85rem] text-slate-700 space-y-1.5 mt-2">
-                        <li>Collaborated alongside senior engineers to deploy new onboarding pages.</li>
-                        <li>Handled over 30 bug tickets drastically improving platform stability.</li>
-                      </ul>
-                   </div>
-                </div>
-             </div>
+              </div>
+            )}
           </div>
         </div>
 
       </div>
 
-      {/* Floating Chat Bubble */}
-      <button className="fixed bottom-6 right-6 w-14 h-14 bg-[#3b82f6] text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(59,130,246,0.6)] hover:scale-110 hover:bg-[#2563eb] transition-all z-50 animate-bounce cursor-pointer border-4 border-white/20">
-         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-         </svg>
+      {/* Floating chat bubble */}
+      <button className="fixed bottom-6 right-6 w-13 h-13 w-[52px] h-[52px] bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(99,102,241,0.5)] hover:scale-110 hover:bg-indigo-400 transition-all z-50 border-2 border-white/20">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
       </button>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
-        
-        .transform-origin-top { transform-origin: top center; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(99,102,241,0.3); border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(99,102,241,0.5); }
+
+        @keyframes ai-reveal {
+          0%   { opacity: 0; transform: translateY(16px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-ai-reveal {
+          animation: ai-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
       `}} />
     </div>
   );
